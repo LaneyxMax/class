@@ -5,11 +5,20 @@
     <title>快乐积分乐园</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* 基础样式重置 */
+        * { 
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body { 
             font-family: 'Comic Sans MS', cursive; 
             background: #f9f3e9; 
-            padding: 20px; 
+            padding: 20px;
+            min-height: 100vh;
         }
+
         .header {
             background: #FFB6C1;
             padding: 15px;
@@ -18,42 +27,64 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
         }
+
         .student-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 15px;
             margin: 15px 0;
         }
+
         .student-card {
             background: white;
             border-radius: 15px;
             padding: 15px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.1);
             border: 2px solid #FFD700;
+            transition: transform 0.3s;
         }
+
+        .student-card:hover {
+            transform: translateY(-3px);
+        }
+
         .student-id {
             color: #666;
             font-size: 0.9em;
+            margin-bottom: 5px;
         }
+
         .student-name {
             font-weight: bold;
             margin: 5px 0;
             color: #FF69B4;
+            font-size: 1.2em;
         }
+
         .score-box {
             background: #87CEEB;
             border-radius: 10px;
             padding: 8px;
             margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+
         .coins-box {
             background: #98FB98;
             border-radius: 10px;
             padding: 8px;
             margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+
         .negative { color: red; }
+
         button {
             background: #FFB6C1;
             border: none;
@@ -62,14 +93,22 @@
             margin: 3px;
             cursor: pointer;
             transition: 0.3s;
+            font-family: inherit;
         }
-        button:hover { transform: scale(1.05); }
+
+        button:hover { 
+            transform: scale(1.05);
+            filter: brightness(0.95);
+        }
+
         .controls {
             background: #E6E6FA;
             padding: 15px;
             border-radius: 15px;
             margin: 15px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+
         #modal {
             display: none;
             position: fixed;
@@ -78,7 +117,9 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.5);
+            z-index: 999;
         }
+
         .modal-content {
             background: white;
             margin: 10% auto;
@@ -86,13 +127,16 @@
             width: 90%;
             max-width: 400px;
             border-radius: 15px;
+            position: relative;
         }
+
         input[type="number"] {
             padding: 8px;
             border-radius: 15px;
             border: 2px solid #87CEEB;
             margin: 5px;
             width: 80px;
+            font-family: inherit;
         }
     </style>
 </head>
@@ -127,23 +171,15 @@
         // 学生名单
         const fullNameList = ["陈劲桥","陈玟言","陈醉墨","单彦桐","苟轩鸣","黎瑞霖","李嘉阳","李景耘","李洛亦","李提醍","廖祯真","刘子洋","路依文","马平川","牟柏然","牟林昊","邱晚宸","石逸朗","谭涞予","王翊丞","王梓铭","王梓熙","熊珮淞","杨秉宸","杨麒晔","尹逸知","张峻源","周子槺","曾泊匀","陈玟伲","陈清桐","陈臆米","陈阅微","郝洺伊","胡尹馨","兰怡霖","李恩霖","李露萍","刘芷妍","梅锦陌","汤婉扬","唐维林","王施懿","王婉琳","王奕菲","文理妍","吴佩瑶","杨睿一","袁沐希","张露涵","张思甜","张文奕","张雨禾"];
 
-        let students = JSON.parse(localStorage.getItem('students')) || [];
-        let prizes = JSON.parse(localStorage.getItem('prizes')) || [];
-
         // 初始化学生数据
-        if(students.length === 0) {
-            fullNameList.forEach((name, index) => {
-                students.push({ 
-                    id: index+1, 
-                    name: name, 
-                    score: 0, 
-                    coins: 0 
-                });
-            });
-        }
+        let students = JSON.parse(localStorage.getItem('students')) || fullNameList.map((name, index) => ({
+            id: index+1, 
+            name: name, 
+            score: 0, 
+            coins: 0 
+        }));
 
-        // 自动保存
-        setInterval(saveData, 300000);
+        let prizes = JSON.parse(localStorage.getItem('prizes')) || [];
 
         // 核心功能
         function changeScore(index, delta) {
@@ -164,8 +200,8 @@
         function batchSubtract() {
             let score = parseInt(document.getElementById('batchScore').value) || 0;
             students.forEach(s => { 
-                s.score -= score; 
-                s.coins -= score; 
+                s.score = Math.max(0, s.score - score);
+                s.coins = Math.max(0, s.coins - score);
             });
             renderStudents();
         }
@@ -192,14 +228,15 @@
                     </div>
                 </div>
             `).join('');
+            saveData();
         }
 
         // 学生管理
         function showAddStudent() {
             document.getElementById('modalContent').innerHTML = `
                 <h3>➕ 添加学生</h3>
-                <input type="text" id="newName" placeholder="学生姓名">
-                <button onclick="addStudent()">确认添加</button>
+                <input type="text" id="newName" placeholder="学生姓名" style="padding:8px;width:200px">
+                <button onclick="addStudent()" style="margin-top:10px">确认添加</button>
             `;
             showModal();
         }
@@ -222,18 +259,18 @@
         function showAddPrize() {
             document.getElementById('modalContent').innerHTML = `
                 <h3>🎁 奖品管理</h3>
-                <div style="max-height:200px;overflow-y:auto">
+                <div style="max-height:200px;overflow-y:auto;margin:10px 0">
                     ${prizes.map((p,i) => `
-                        <div style="padding:5px;border-bottom:1px solid #eee">
-                            ${p.name}（${p.cost}币）
-                            <button onclick="deletePrize(${i})">删除</button>
+                        <div style="padding:8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between">
+                            <div>${p.name}（${p.cost}币）</div>
+                            <button onclick="deletePrize(${i})" style="padding:2px 8px">删除</button>
                         </div>
                     `).join('')}
                 </div>
                 <h4>添加新奖品：</h4>
-                <input type="text" id="prizeName" placeholder="奖品名称">
-                <input type="number" id="prizeCost" placeholder="所需币数">
-                <button onclick="addPrize()">添加</button>
+                <input type="text" id="prizeName" placeholder="奖品名称" style="margin:5px">
+                <input type="number" id="prizeCost" placeholder="所需币数" min="1" style="margin:5px">
+                <button onclick="addPrize()" style="margin-top:10px">添加奖品</button>
             `;
             showModal();
         }
@@ -260,11 +297,11 @@
             const student = students[studentIndex];
             document.getElementById('modalContent').innerHTML = `
                 <h3>🎁 ${student.name} 的兑换</h3>
-                <p>当前兑换币：${student.coins}</p>
+                <p style="margin:10px 0">当前兑换币：${student.coins}</p>
                 <div style="max-height:300px;overflow-y:auto">
                     ${prizes.map((p, index) => `
-                        <div style="padding:5px;border-bottom:1px solid #eee">
-                            ${p.name}（需要 ${p.cost} 币）
+                        <div style="padding:8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between">
+                            <div>${p.name}（需要 ${p.cost} 币）</div>
                             <button onclick="confirmRedeem(${studentIndex}, ${index})" 
                                 ${student.coins < p.cost ? 'disabled style="background:#ccc"' : ''}>
                                 兑换
@@ -272,7 +309,7 @@
                         </div>
                     `).join('')}
                 </div>
-                ${prizes.length === 0 ? '<p>暂无奖品，请先添加</p>' : ''}
+                ${prizes.length === 0 ? '<p style="color:#666;margin:10px 0">暂无奖品，请先添加</p>' : ''}
             `;
             showModal();
         }
@@ -285,27 +322,38 @@
                 student.coins -= prize.cost;
                 renderStudents();
                 closeModal();
-                alert(`兑换成功！${student.name} 获得【${prize.name}】`);
+                alert(`🎉 兑换成功！${student.name} 获得【${prize.name}】`);
             } else {
-                alert('兑换币不足！');
+                alert('⚠️ 兑换币不足！');
             }
         }
 
         // 通用功能
-        function showModal() { document.getElementById('modal').style.display = 'block'; }
-        function closeModal() { document.getElementById('modal').style.display = 'none'; }
+        function showModal() { 
+            document.getElementById('modal').style.display = 'block'; 
+        }
+        
+        function closeModal() { 
+            document.getElementById('modal').style.display = 'none'; 
+        }
+        
         function saveData() { 
             localStorage.setItem('students', JSON.stringify(students)); 
             localStorage.setItem('prizes', JSON.stringify(prizes)); 
         }
+        
         function clearScores() {
-            if(confirm('确定要清除所有积分和兑换币吗？')) {
-                students.forEach(s => { s.score = 0; s.coins = 0; });
+            if(confirm('⚠️ 确定要清除所有积分和兑换币吗？')) {
+                students.forEach(s => { 
+                    s.score = 0; 
+                    s.coins = 0; 
+                });
                 saveData();
                 renderStudents();
-                alert('已清零！');
+                alert('✅ 已清零所有积分！');
             }
         }
+        
         function exportData() {
             const wsData = students.map(s => [s.id, s.name, s.score, s.coins]);
             const wb = XLSX.utils.book_new();
@@ -314,9 +362,12 @@
             XLSX.writeFile(wb, `积分数据_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        // 初始化
-        document.getElementById('date').textContent = new Date().toLocaleDateString();
-        renderStudents();
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('date').textContent = new Date().toLocaleDateString();
+            renderStudents();
+            setInterval(saveData, 300000); // 每5分钟自动保存
+        });
     </script>
 </body>
 </html>
